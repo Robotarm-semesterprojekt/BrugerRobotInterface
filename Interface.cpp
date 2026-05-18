@@ -8,6 +8,8 @@ typedef std::pair<int, int> Point;
 // Define a type for a point that the robot can be feed, using double bacuse the robot takes the position in meters
 typedef std::pair<double, double> PointR;
 
+double pi = 3.1416;
+
 //Transform a point from the 2D space to the robot's coordinate system using an affine transformation
 PointR transformPointAffine(const Point& p) {
     double x = p.first;
@@ -17,6 +19,66 @@ PointR transformPointAffine(const Point& p) {
     double yp =  0.001048  * x + 0.0003646 * y - 0.645;
 
     return {xp, yp};
+}
+
+
+
+
+
+std::vector<PointR> generateXYrVectors(const std::vector<PointR>& p, double radAngle) {
+    std::vector<PointR> result;
+
+    if (p.size() < 2)
+        return result;
+
+    result.reserve(p.size());
+
+    for (size_t i = 0; i < p.size(); ++i)
+    {
+        double vx, vy;
+
+        // First point
+        if (i == 0)
+        {
+            vx = p[i + 1].first  - p[i].first;
+            vy = p[i + 1].second - p[i].second;
+        }
+        // Last point
+        else if (i == p.size() - 1)
+        {
+            vx = p[i].first  - p[i - 1].first;
+            vy = p[i].second - p[i - 1].second;
+        }
+        // Middle points
+        else
+        {
+            vx = p[i + 1].first  - p[i - 1].first;
+            vy = p[i + 1].second - p[i - 1].second;
+        }
+
+        // Rotate vector
+        double nx = (vx * std::cos(radAngle)) -
+                    (vy * std::sin(radAngle));
+
+        double ny = (vx * std::sin(radAngle)) +
+                    (vy * std::cos(radAngle));
+
+        // Normalize and scale by pi
+        double len = std::sqrt((nx * nx) + (ny * ny));
+
+        double rx = 0.0;
+        double ry = 0.0;
+
+        if (len > 0.0)
+        {
+            rx = (nx / len) * pi;
+            ry = (ny / len) * pi;
+        }
+
+        result.emplace_back(rx, ry);
+    }
+
+    return result;
 }
 
 
@@ -77,8 +139,12 @@ int main() {
     const int WIDTH = 223;
     const int HEIGHT = 288;
 
+    //Define the radian angle that the robot should place the dominos at relative to the line.
+    const double angle = pi/2;
+
+
     // Variable to determine the distance between consecutive points on the line
-    double point_distance = 1.0; // Default distance; can be changed
+    double point_distance = 15.0; // Default distance; can be changed
 
     // Prompt user for the distance between points
     std::cout << "Enter the distance between points on the line (e.g., 1.0 for unit distance): ";
@@ -112,10 +178,16 @@ int main() {
     auto transformed_points = transformPointsAffine(points);
 
 
+    auto pointRotations = generateXYrVectors(transformed_points,angle);
+
+
     // Output the number of points and the list of points
     std::cout << "Line points (" << transformed_points.size() << " points):" << std::endl;
     for (std::size_t i = 0; i < transformed_points.size(); ++i) {
-        std::cout << "(" << points[i].first << ", " << points[i].second << ") -> (" << transformed_points[i].first << ", " << transformed_points[i].second << ")"<<std::endl;
+        std::cout << "(" << points[i].first << ", " << points[i].second << ") -> (" <<
+         transformed_points[i].first << ", " << transformed_points[i].second << ") "<<
+         "Rotation: ("<< pointRotations[i].first << ", " << pointRotations[i].second << ")"<<
+         std::endl;
         if (i < points.size() - 1) std::cout << ", ";
     }
     std::cout << std::endl;
